@@ -45,6 +45,7 @@ SUBCOMMANDS:
   insert                  Insert a favorite at the start of the sidebar.
   remove                  Remove a sidebar favorite by name (or 'all' to remove
                           every favorite).
+  icon                    Set a monochrome sidebar glyph on a favorite.
   version                 Print the version.
 ```
 
@@ -56,6 +57,8 @@ mysides add example file:///Users/Shared/example
 mysides insert example file:///Users/Shared/example
 mysides remove example
 mysides remove all        # remove every favorite
+mysides icon example star      # set a star glyph
+mysides icon example none      # reset to the default folder glyph
 mysides --version
 mysides --help
 ```
@@ -68,8 +71,8 @@ when an item's URL can no longer be resolved.
 | Code | Meaning |
 |------|---------|
 | 0    | Success |
-| 1    | Item not found, or invalid URI |
-| 2    | Failed to open the shared file list (API failure) |
+| 1    | Item not found, invalid URI, or unknown glyph |
+| 2    | Failed to open the shared file list, set a glyph, or register the icon helper |
 | 64   | Usage error (invalid/missing arguments, via ArgumentParser) |
 
 Errors are written to stderr; normal output goes to stdout.
@@ -88,6 +91,31 @@ and a URL that does not resolve to an existing file or folder is silently
 dropped. Distinct, existing URLs each appear as separate favorites. This
 behavior comes from the operating system (the API has no public replacement),
 not from `mysides` itself.
+
+### Sidebar glyphs
+
+Finder draws sidebar favorites as a flat, single-color silhouette tinted to the
+sidebar — color there is impossible (a macOS rule). `mysides icon <name> <glyph>`
+instead sets the favorite's *shape* to a monochrome SF Symbol:
+
+- Presets: `folder`, `star`, `heart`, `briefcase`, `hammer`, `tag`, `bookmark`,
+  `trash`, `house`, `gearshape`, `pencil`, `photo`, `music`, `doc`, `link`,
+  `flag`, `clock`, `calendar`, `envelope`, `cart`.
+- `none` resets a favorite back to its default folder glyph.
+
+```sh
+mysides icon example star
+mysides icon example none
+```
+
+The glyph is applied immediately (no Finder restart needed). Under the hood it
+sets the favorite's `com.apple.LSSharedFileList.OverrideIcon.OSType` property to
+a private four-character code, which Finder resolves to an SF Symbol through a
+small helper bundle that `mysides` generates and registers with Launch Services
+on first use (at `~/Library/Application Support/mysides/Icons.app`).
+
+Note: a folder that carries its own custom icon (set via Finder's Get Info)
+takes precedence and can override the sidebar glyph.
 
 ## Tests
 

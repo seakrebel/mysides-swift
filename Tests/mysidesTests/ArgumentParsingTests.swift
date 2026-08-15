@@ -49,4 +49,18 @@ final class ArgumentParsingTests: XCTestCase {
     func testAddRejectsExtraArguments() {
         XCTAssertThrowsError(try Add.parse(["Name", "file:///tmp", "extra"]))
     }
+
+    func testIconParsesNameAndGlyph() throws {
+        let command = try Icon.parse(["MyFolder", "star"])
+        XCTAssertEqual(command.name, "MyFolder")
+        XCTAssertEqual(command.glyph, "star")
+    }
+
+    func testIconRequiresGlyph() {
+        XCTAssertThrowsError(try Icon.parse(["MyFolder"]))
+    }
+
+    func testIconRequiresNameAndGlyph() {
+        XCTAssertThrowsError(try Icon.parse([]))
+    }
 }

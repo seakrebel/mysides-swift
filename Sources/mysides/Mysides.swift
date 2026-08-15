@@ -8,9 +8,9 @@ let mysidesVersion = "2.0.0"
 private extension SidebarError {
     var exitCode: Int32 {
         switch self {
-        case .couldNotOpenList:
+        case .couldNotOpenList, .setShapeFailed, .helperFailed:
             return 2
-        case .invalidURL, .notFound:
+        case .invalidURL, .notFound, .invalidShape:
             return 1
         }
     }
@@ -53,6 +53,7 @@ struct Mysides: ParsableCommand {
             Add.self,
             Insert.self,
             Remove.self,
+            Icon.self,
             Version.self
         ]
     )
@@ -136,6 +137,34 @@ struct Remove: SidebarCommand {
             } else {
                 try SidebarFavorites.remove(name: name)
                 print("Removed sidebar item with name: \(name)")
+            }
+        }
+    }
+}
+
+struct Icon: SidebarCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Set a monochrome sidebar glyph on a favorite."
+    )
+
+    @Argument(help: "Display name of the sidebar favorite.")
+    var name: String
+
+    @Argument(help: "Glyph name ('\(SidebarGlyph.resetName)' resets to the default folder icon). Presets: \(SidebarGlyph.presetNames.joined(separator: ", ")).")
+    var glyph: String
+
+    @available(macOS, deprecated: 10.11, message: "Intentionally uses the deprecated LSSharedFileList API.")
+    func run() throws {
+        throw runSidebar {
+            if glyph == SidebarGlyph.resetName {
+                try SidebarFavorites.setOverrideIcon(code: nil, forName: name)
+                print("Reset the glyph for sidebar item '\(name)'.")
+            } else if let preset = SidebarGlyph.preset(named: glyph) {
+                _ = try SidebarGlyph.ensureHelperBundleRegistered()
+                try SidebarFavorites.setOverrideIcon(code: preset.code, forName: name)
+                print("Set '\(preset.symbol)' glyph on sidebar item '\(name)'.")
+            } else {
+                throw SidebarError.invalidShape(glyph)
             }
         }
     }

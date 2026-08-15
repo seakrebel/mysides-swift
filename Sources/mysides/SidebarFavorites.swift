@@ -12,6 +12,9 @@ enum SidebarError: Error, Equatable, CustomStringConvertible {
     case couldNotOpenList
     case invalidURL(String)
     case notFound(name: String)
+    case invalidShape(String)
+    case setShapeFailed(name: String)
+    case helperFailed(String)
 
     var description: String {
         switch self {
@@ -21,6 +24,12 @@ enum SidebarError: Error, Equatable, CustomStringConvertible {
             return "Invalid URI: \(string)"
         case .notFound(let name):
             return "Could not find sidebar item with display name: \(name)"
+        case .invalidShape(let spec):
+            return "Unknown glyph: \(spec)"
+        case .setShapeFailed(let name):
+            return "Could not set glyph for sidebar item: \(name)"
+        case .helperFailed(let detail):
+            return "Icon helper failed: \(detail)"
         }
     }
 }
@@ -118,6 +127,38 @@ enum SidebarFavorites {
     static func removeAll() throws {
         let list = try openList()
         LSSharedFileListRemoveAllItems(list)
+    }
+
+    /// The property Finder reads to override a favorite's sidebar glyph. Its
+    /// value is a four-character OSType code (set) or `kCFNull` (cleared).
+    static let overrideIconKey = "com.apple.LSSharedFileList.OverrideIcon.OSType"
+
+    /// Sets (or, with `code == nil`, clears) the sidebar glyph override for the
+    /// favorite whose display name matches `name`. Throws `notFound` when no
+    /// item matches.
+    static func setOverrideIcon(code: String?, forName name: String) throws {
+        let list = try openList()
+        guard let items = try snapshot(of: list) else {
+            throw SidebarError.notFound(name: name)
+        }
+
+        for item in items {
+            let displayName = LSSharedFileListItemCopyDisplayName(item).takeRetainedValue() as String
+            if displayName == name {
+                let value: CFTypeRef
+                if let code = code {
+                    value = code as NSString
+                } else {
+                    value = kCFNull!
+                }
+                let status = LSSharedFileListItemSetProperty(item, overrideIconKey as CFString, value)
+                guard status == noErr else {
+                    throw SidebarError.setShapeFailed(name: name)
+                }
+                return
+            }
+        }
+        throw SidebarError.notFound(name: name)
     }
 
     /// Snapshot of the list's items, or `nil` if unavailable.

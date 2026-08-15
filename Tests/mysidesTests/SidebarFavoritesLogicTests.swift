@@ -72,6 +72,18 @@ final class SidebarFavoritesLogicTests: XCTestCase {
             SidebarError.notFound(name: "Foo").description,
             "Could not find sidebar item with display name: Foo"
         )
+        XCTAssertEqual(
+            SidebarError.invalidShape("bogus").description,
+            "Unknown glyph: bogus"
+        )
+        XCTAssertEqual(
+            SidebarError.setShapeFailed(name: "Foo").description,
+            "Could not set glyph for sidebar item: Foo"
+        )
+        XCTAssertEqual(
+            SidebarError.helperFailed("boom").description,
+            "Icon helper failed: boom"
+        )
     }
 
     // MARK: - SidebarItem equatable
@@ -86,5 +98,19 @@ final class SidebarFavoritesLogicTests: XCTestCase {
             SidebarItem(name: "A", url: nil),
             SidebarItem(name: "B", url: nil)
         )
+    }
+
+    // MARK: - sidebar glyph presets
+
+    func testSidebarGlyphPresetLookup() {
+        XCTAssertNotNil(SidebarGlyph.preset(named: "star"))
+        XCTAssertEqual(SidebarGlyph.preset(named: "star")?.symbol, "star.fill")
+        XCTAssertNil(SidebarGlyph.preset(named: "bogus"))
+    }
+
+    func testSidebarGlyphCodesAreFourCharacters() {
+        for preset in SidebarGlyph.presets {
+            XCTAssertEqual(preset.code.count, 4, "\(preset.name) code must be 4 chars")
+        }
     }
 }
