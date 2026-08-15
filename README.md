@@ -1,34 +1,113 @@
-# mysides #
+# mysides
 
-A simple CLI tool for Finder sidebar modification.
+A small macOS command-line tool for modifying the Finder sidebar favorites
+("Favorite Items") list.
 
-**NOTE**: I clobbered this together with very little experience in C/CoreFoundation, as a result the code may be horrible.
+This is a from-scratch Swift rewrite of the original Objective-C
+[`mysides`](https://github.com/mosen/mysides), keeping the same commands and
+mental model. It is a Swift Package Manager package (no Xcode project) and uses
+[Swift ArgumentParser](https://github.com/apple/swift-argument-parser).
 
-**NOTE*: Using Versions 10.11 El Capitan or 10.12 Sierra, you can also use `sfltool` to achieve similar things. _These options were removed in 10.13 High Sierra onwards [*][1013-regression]._ Example:
+## Requirements
 
-    $ sfltool add-item com.apple.LSSharedFileList.FavoriteItems file:///Path/To/Sidebar/Folder
+- macOS 13 or later
+- Xcode Command Line Tools (`xcode-select --install`) for `swift build`
 
-## Usage ##
+## Build & install
 
-List sidebar favorites items:
+```sh
+swift build -c release
+# the binary is at .build/release/mysides
+```
 
-    mysides list
+To install into `/usr/local/bin`:
 
-Append a new item to the end of a list:
+```sh
+install -m 0755 .build/release/mysides /usr/local/bin/mysides
+```
 
-    mysides add example file:///Users/Shared/example
+Or run it directly without installing:
 
-Insert a new item at the start of the list:
+```sh
+swift run mysides list
+```
 
-    mysides insert example file:///Users/Shared/example
+## Usage
 
-Remove the item (by name):
+```
+OVERVIEW: Modify the Finder sidebar favorites list.
 
-    mysides remove example
+USAGE: mysides <subcommand>
 
-## Credits ##
+SUBCOMMANDS:
+  list                    List sidebar favorites.
+  add                     Append a favorite to the end of the sidebar.
+  insert                  Insert a favorite at the start of the sidebar.
+  remove                  Remove a sidebar favorite by name (or 'all' to remove
+                          every favorite).
+  version                 Print the version.
+```
 
-portions (l) copyleft 2011 Adam Strzelecki nanoant.com
-without whom I would not know much about the LSSharedFileList API.
+Examples:
 
- [1013-regression]: https://openradar.appspot.com/radar?id=4985135170584576
+```sh
+mysides list
+mysides add example file:///Users/Shared/example
+mysides insert example file:///Users/Shared/example
+mysides remove example
+mysides remove all        # remove every favorite
+mysides --version
+mysides --help
+```
+
+`list` prints one favorite per line as `name -> url`, or `name -> NOTFOUND`
+when an item's URL can no longer be resolved.
+
+## Exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0    | Success |
+| 1    | Item not found, or invalid URI |
+| 2    | Failed to open the shared file list (API failure) |
+| 64   | Usage error (invalid/missing arguments, via ArgumentParser) |
+
+Errors are written to stderr; normal output goes to stdout.
+
+## Notes
+
+`mysides` wraps `LSSharedFileList` with the `kLSSharedFileListFavoriteItems`
+list type. Apple deprecated this API in macOS 10.11 and has shipped no public
+replacement (the `sfltool` sidebar operations were removed after Sierra), but
+the API still functions for reading and mutating sidebar favorites on macOS 13+.
+
+Because the API is deprecated and unsupported, its behavior on modern macOS is
+best-effort. The favorites list is keyed by URL: adding a favorite whose URL is
+already in the list renames the existing entry instead of creating a duplicate,
+and a URL that does not resolve to an existing file or folder is silently
+dropped. Distinct, existing URLs each appear as separate favorites. This
+behavior comes from the operating system (the API has no public replacement),
+not from `mysides` itself.
+
+## Tests
+
+Unit tests cover URI validation, the case-insensitive `all` sentinel for
+`remove`, error descriptions, and argument parsing:
+
+```sh
+swift test
+```
+
+Tests require a full Xcode installation (`XCTest` is not shipped with the
+Command Line Tools alone).
+
+## Credits
+
+- Original Objective-C tool: [mosen/mysides](https://github.com/mosen/mysides)
+- "Portions (l) copyleft 2011 Adam Strzelecki nanoant.com", without whom the
+  `LSSharedFileList` API usage would not be documented.
+- Swift rewrite of this fork: seakrebel
+
+## License
+
+MIT. See [LICENSE](LICENSE).
